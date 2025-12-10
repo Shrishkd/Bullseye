@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, Sparkles, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,8 +72,8 @@ export default function Signup() {
         <div className="glass-strong rounded-3xl p-8 border border-border/50">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-secondary glow-primary flex items-center justify-center">
-              <Sparkles className="h-7 w-7 text-primary-foreground" />
+            <div className="h-16 w-16 rounded-xl flex items-center justify-center">
+              <img src="/favicon.ico" alt="Bullseye" className="h-16 w-16" />
             </div>
           </div>
 

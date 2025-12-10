@@ -71,7 +71,7 @@ export default function Dashboard() {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-4xl font-bold mb-2">
-          Welcome to <span className="gradient-text">TradeAI</span>
+          Welcome to <span className="gradient-text">Bullseye</span>
         </h1>
         <p className="text-muted-foreground">
           Your AI-powered investment dashboard with real-time insights

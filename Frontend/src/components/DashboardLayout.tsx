@@ -13,7 +13,6 @@ import {
   Settings,
   LogOut,
   Menu,
-  Sparkles,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
@@ -69,10 +68,10 @@ function DashboardSidebar() {
       <SidebarContent className="glass-strong border-r border-border/50">
         {/* Logo */}
         <div className="p-4 flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary glow-primary flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
+          <div className="h-10 w-10 rounded-lg flex items-center justify-center">
+            <img src="/favicon.ico" alt="Bullseye" className="h-10 w-10" />
           </div>
-          <span className="text-lg font-bold gradient-text">TradeAI</span>
+          <span className="text-xl font-bold gradient-text">Bullseye</span>
         </div>
 
         <SidebarGroup>

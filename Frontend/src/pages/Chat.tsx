@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Sparkles } from 'lucide-react';
+import { Send, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -103,7 +103,7 @@ export default function Chat() {
             onClick={() => handleQuickPrompt(prompt)}
             className="glass hover:glass-strong transition-smooth border-border/50 hover:border-primary/30"
           >
-            <Sparkles className="h-3 w-3 mr-2 text-primary" />
+            <img src="/favicon.ico" alt="Bullseye" className="h-3 w-3 mr-2" />
             {prompt}
           </Button>
         ))}

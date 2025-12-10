@@ -8,7 +8,6 @@ import {
   ShieldAlert,
   Bell,
   ArrowRight,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -78,10 +77,10 @@ export default function Landing() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-2"
           >
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary glow-primary flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
+            <div className="h-10 w-10 rounded-lg flex items-center justify-center">
+              <img src="/favicon.ico" alt="Bullseye" className="h-10 w-10" />
             </div>
-            <span className="text-xl font-bold gradient-text">TradeAI</span>
+            <span className="text-2xl font-bold gradient-text">Bullseye</span>
           </motion.div>
 
           <div className="flex items-center gap-4">
@@ -253,7 +252,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="py-8 px-4 border-t border-border/50">
         <div className="container mx-auto text-center text-muted-foreground">
-          <p>© 2025 TradeAI. AI-Powered Investment Platform.</p>
+          <p>© 2025 Bullseye. AI-Powered Investment Platform.</p>
         </div>
       </footer>
     </div>
