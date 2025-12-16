@@ -5,8 +5,9 @@ import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -16,45 +17,34 @@ export default function Signup() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+const signup = useAuthStore((state) => state.signup);
 
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
+const handleSignup = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
+  if (password !== confirmPassword) {
+    toast.error('Passwords do not match');
+    return;
+  }
 
-    setLoading(true);
+  if (password.length < 6) {
+    toast.error('Password must be at least 6 characters');
+    return;
+  }
 
-    try {
-      const redirectUrl = `${window.location.origin}/dashboard`;
+  setLoading(true);
 
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
+  try {
+    await signup(email, password, fullName);
+    toast.success('Account created successfully!');
+    navigate('/dashboard');
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to create account');
+  } finally {
+    setLoading(false);
+  }
+};
 
-      if (error) throw error;
-
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 relative overflow-hidden">

@@ -4,6 +4,9 @@ import { Send, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
+import { chatQuery } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -20,15 +23,18 @@ const quickPrompts = [
 ];
 
 export default function Chat() {
+  const { isAuthenticated } = useAuthStore();
+
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
+      id: 'init',
       role: 'assistant',
       content:
-        'Hello! I\'m your AI investment assistant. I can help you analyze stocks, understand market trends, review your portfolio, and answer investment questions. How can I help you today?',
+        "Hello! I'm your AI investment assistant. I can help you analyze stocks, understand market trends, review your portfolio, and answer investment questions. How can I help you today?",
       timestamp: new Date(),
     },
   ]);
+
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -39,10 +45,15 @@ export default function Chat() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
+
+    if (!isAuthenticated) {
+      toast.error('Please login to use the AI assistant');
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -55,24 +66,37 @@ export default function Chat() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const res = await chatQuery(userMessage.content);
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content:
-          'This is a simulated response. In production, this would connect to an AI model to provide real investment insights and analysis. The AI would analyze market data, provide predictions, and offer personalized investment advice based on your query.',
+        content: res.answer || 'No response generated.',
         timestamp: new Date(),
       };
+
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 2).toString(),
+          role: 'assistant',
+          content:
+            error?.message ||
+            'Something went wrong while contacting the AI service.',
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleQuickPrompt = (prompt: string) => {
     setInput(prompt);
   };
-
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col p-6">
       <motion.div

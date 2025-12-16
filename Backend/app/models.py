@@ -82,4 +82,4 @@ class DocumentEmbedding(Base):
     doc_id = Column(String(255), unique=True, index=True)
     text = Column(Text, nullable=False)
     embedding = Column(Text, nullable=False)  # JSON-string of vector
-    metadata = Column(Text, nullable=True)
+    doc_meta = Column(Text, nullable=True)

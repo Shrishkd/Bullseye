@@ -1,16 +1,76 @@
-import { create } from 'zustand';
-import { User, Session } from '@supabase/supabase-js';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { loginApi, signupApi, logoutApi } from "../lib/api";
 
 interface AuthState {
-  user: User | null;
-  session: Session | null;
-  setUser: (user: User | null) => void;
-  setSession: (session: Session | null) => void;
+  token: string | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, fullName?: string) => Promise<void>;
+  logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  session: null,
-  setUser: (user) => set({ user }),
-  setSession: (session) => set({ session, user: session?.user ?? null }),
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      token: null,
+      isAuthenticated: false,
+      loading: false,
+
+      login: async (email, password) => {
+        set({ loading: true });
+        try {
+          const res = await loginApi(email, password);
+          const token = res.access_token;
+
+          localStorage.setItem("bullock_token", token);
+
+          set({
+            token,
+            isAuthenticated: true,
+            loading: false,
+          });
+        } catch (err) {
+          set({ loading: false });
+          throw err;
+        }
+      },
+
+      signup: async (email, password, fullName) => {
+        set({ loading: true });
+        try {
+          await signupApi(email, password, fullName);
+          // auto-login after signup
+          const res = await loginApi(email, password);
+          const token = res.access_token;
+
+          localStorage.setItem("bullock_token", token);
+
+          set({
+            token,
+            isAuthenticated: true,
+            loading: false,
+          });
+        } catch (err) {
+          set({ loading: false });
+          throw err;
+        }
+      },
+
+      logout: () => {
+        logoutApi();
+        localStorage.removeItem("bullock_token");
+        set({
+          token: null,
+          isAuthenticated: false,
+        });
+      },
+    }),
+    {
+      name: "bullock-auth",
+    }
+  )
+);
+

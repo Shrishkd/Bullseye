@@ -1,32 +1,59 @@
-import httpx
-from app.core.config import settings
+# app/services/llm_client.py
+
+import os
+from google import genai
 
 
 class LLMClient:
     """
-    Simple wrapper around an OpenAI-compatible chat/completions API.
-    You can point this to OpenAI, Groq, local server, etc.
+    Gemini-based LLM client for Bullock.
+    Uses the modern `google-genai` SDK (recommended by Google).
     """
 
     def __init__(self):
-        self.api_key = settings.OPENAI_API_KEY
-        self.model = settings.LLM_MODEL
-        self.base_url = "https://api.openai.com/v1/chat/completions"
+        api_key = os.getenv("GEMINI_API_KEY")
+
+        if not api_key:
+            self.client = None
+            return
+
+        # Initialize Gemini client
+        self.client = genai.Client(api_key=api_key)
+
+        # Default model (fast + cost-efficient)
+        self.model_name = "gemini-1.5-flash"
 
     def chat(self, system_prompt: str, user_message: str) -> str:
-        if not self.api_key:
-            return "LLM API key not configured. This is a stub response."
+        """
+        Generate an AI response using Gemini.
 
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        json_data = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            "temperature": 0.3,
-        }
-        resp = httpx.post(self.base_url, headers=headers, json=json_data, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        Parameters:
+        - system_prompt: Instructions / role definition
+        - user_message: User question + context
+
+        Returns:
+        - Generated text response
+        """
+
+        if not self.client:
+            return "Gemini API key not configured."
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=f"""
+{system_prompt}
+
+{user_message}
+""",
+                generation_config={
+                    "temperature": 0.4,
+                    "max_output_tokens": 512,
+                },
+            )
+
+            return response.text.strip() if response.text else "No response generated."
+
+        except Exception as e:
+            # Never crash the app because of AI
+            return f"AI service error: {str(e)}"

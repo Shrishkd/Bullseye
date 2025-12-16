@@ -1,16 +1,28 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.v1 import auth, market, chat, health
+from app.api.v1 import auth, market, chat, health, ws_market
+from app.db.session import engine
+from app.models import Base
 
+load_dotenv()
+
+# -----------------------------
+# Create FastAPI app
+# -----------------------------
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# CORS – allow your frontend origin here
+# -----------------------------
+# CORS configuration
+# -----------------------------
 origins = [
-    "http://localhost:5173",  # Vite dev
+    "http://localhost:5173",
     "http://localhost:3000",
-    # Add your deployed frontend URL too
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
@@ -21,14 +33,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -----------------------------
+# 🔥 CREATE DATABASE TABLES ON STARTUP
+# -----------------------------
+@app.on_event("startup")
+async def on_startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+# -----------------------------
 # Routers
+# -----------------------------
 app.include_router(health.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(market.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
-# later: portfolio, alerts, etc.
+app.include_router(ws_market.router)
 
-
+# -----------------------------
+# Root endpoint
+# -----------------------------
 @app.get("/")
 async def root():
-    return {"message": "Bullock backend is running"}
+    return {"message": "Bullseye backend is running"}
