@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useEffect } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   Home,
   TrendingUp,
@@ -13,8 +13,9 @@ import {
   Settings,
   LogOut,
   Menu,
-} from 'lucide-react';
-import { NavLink } from '@/components/NavLink';
+} from "lucide-react";
+
+import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
   SidebarContent,
@@ -26,41 +27,36 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuthStore } from '@/stores/authStore';
-import { toast } from 'sonner';
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuthStore } from "@/stores/authStore";
+import { toast } from "sonner";
 
 const navItems = [
-  { title: 'Dashboard', url: '/dashboard', icon: Home },
-  { title: 'Market Data', url: '/market', icon: TrendingUp },
-  { title: 'Predictions', url: '/predictions', icon: Brain },
-  { title: 'Portfolio', url: '/portfolio', icon: PieChart },
-  { title: 'Risk Analysis', url: '/risk', icon: ShieldAlert },
-  { title: 'News', url: '/news', icon: Newspaper },
-  { title: 'Alerts', url: '/alerts', icon: Bell },
-  { title: 'AI Chat', url: '/chat', icon: MessageSquare },
-  { title: 'Settings', url: '/settings', icon: Settings },
+  { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Market Data", url: "/market", icon: TrendingUp },
+  { title: "Predictions", url: "/predictions", icon: Brain },
+  { title: "Portfolio", url: "/portfolio", icon: PieChart },
+  { title: "Risk Analysis", url: "/risk", icon: ShieldAlert },
+  { title: "News", url: "/news", icon: Newspaper },
+  { title: "Alerts", url: "/alerts", icon: Bell },
+  { title: "AI Chat", url: "/chat", icon: MessageSquare },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 function DashboardSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const currentPath = location.pathname;
+  const { logout } = useAuthStore();
 
+  const currentPath = location.pathname;
   const isActive = (path: string) => currentPath === path;
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error('Failed to logout');
-    } else {
-      toast.success('Logged out successfully');
-      navigate('/');
-    }
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+    navigate("/login");
   };
 
   return (
@@ -114,31 +110,16 @@ function DashboardSidebar() {
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
-  const { session, setSession } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (!session) {
-        navigate('/login');
-      }
-    });
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      if (!session) {
-        navigate('/login');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, setSession]);
-
-  if (!session) {
+  // Prevent rendering until auth is confirmed
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -151,7 +132,11 @@ export default function DashboardLayout() {
           {/* Header */}
           <header className="h-16 glass-strong border-b border-border/50 flex items-center justify-between px-4 sticky top-0 z-40">
             <SidebarTrigger>
-              <Button variant="ghost" size="icon" className="hover:bg-muted transition-smooth">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-muted transition-smooth"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SidebarTrigger>

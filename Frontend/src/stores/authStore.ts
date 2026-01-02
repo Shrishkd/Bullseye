@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { loginApi, signupApi, logoutApi } from "../lib/api";
+import { loginApi, signupApi, logoutApi } from "@/lib/api";
 
 interface AuthState {
   token: string | null;
@@ -25,8 +25,6 @@ export const useAuthStore = create<AuthState>()(
           const res = await loginApi(email, password);
           const token = res.access_token;
 
-          localStorage.setItem("bullock_token", token);
-
           set({
             token,
             isAuthenticated: true,
@@ -42,11 +40,10 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true });
         try {
           await signupApi(email, password, fullName);
+
           // auto-login after signup
           const res = await loginApi(email, password);
           const token = res.access_token;
-
-          localStorage.setItem("bullock_token", token);
 
           set({
             token,
@@ -61,7 +58,6 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         logoutApi();
-        localStorage.removeItem("bullock_token");
         set({
           token: null,
           isAuthenticated: false,
@@ -69,8 +65,11 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "bullock-auth",
+      name: "bullseye-auth", // storage key
+      partialize: (state) => ({
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );
-

@@ -5,7 +5,7 @@ from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import UserCreate, UserOut, UserLogin, Token
 from app.crud import users as users_crud
-from app.api.deps import get_db_session
+from app.api.deps import get_db
 from app.core.config import settings
 from app.crud.users import verify_password
 
@@ -23,7 +23,7 @@ def create_access_token(subject: str) -> str:
 @router.post("/signup", response_model=UserOut)
 async def signup(
     user_in: UserCreate,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     existing = await users_crud.get_user_by_email(db, user_in.email)
     if existing:
@@ -38,7 +38,7 @@ async def signup(
 @router.post("/login", response_model=Token)
 async def login(
     credentials: UserLogin,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     user = await users_crud.get_user_by_email(db, credentials.email)
     if not user or not verify_password(credentials.password, user.hashed_password):

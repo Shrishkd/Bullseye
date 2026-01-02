@@ -12,14 +12,11 @@ from app.crud import users as users_crud
 security = HTTPBearer(auto_error=False)
 
 
-async def get_db_session() -> AsyncSession:
-    async for session in get_db():
-        return session
-
+db: AsyncSession = Depends(get_db)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     if not credentials:
         raise HTTPException(

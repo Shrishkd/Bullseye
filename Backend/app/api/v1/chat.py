@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import ChatRequest, ChatResponse
 from app.services.llm_client import LLMClient
 from app.services.embeddings import EmbeddingsStore
-from app.api.deps import get_db_session, get_current_user
+from app.api.deps import get_db, get_current_user
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -17,7 +17,7 @@ emb_store = EmbeddingsStore()
 @router.post("/query", response_model=ChatResponse)
 async def chat_query(
     payload: ChatRequest,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """
@@ -42,7 +42,7 @@ async def chat_query(
     )
 
     system_prompt = (
-        "You are Bullock, an AI-powered investment and trading assistant. "
+        "You are Bullseye, an AI-powered investment and trading assistant. "
         "You help users understand markets, stocks, crypto, and portfolio risk. "
         "Use provided context when available. "
         "If context is empty, provide general educational guidance. "
@@ -84,7 +84,7 @@ async def explain_indicators(
     price = payload.get("price")
 
     system_prompt = (
-        "You are Bullock, an AI-powered investment assistant. "
+        "You are Bullseye, an AI-powered investment assistant. "
         "Explain technical indicators in a simple, educational way. "
         "Do not give direct buy/sell advice or guarantees."
     )
