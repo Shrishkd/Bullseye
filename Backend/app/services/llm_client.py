@@ -6,16 +6,18 @@ from google import genai
 
 class LLMClient:
     """
-    Gemini-based LLM client for Bullock.
-    Uses the modern `google-genai` SDK (recommended by Google).
+    Gemini-based LLM client for Bullseye.
+    Uses the modern `google-genai` SDK.
     """
 
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
 
         if not api_key:
-            self.client = None
-            return
+            raise RuntimeError(
+                "GEMINI_API_KEY is not configured. "
+                "Ensure it is set in backend/.env and the server is restarted."
+            )
 
         # Initialize Gemini client
         self.client = genai.Client(api_key=api_key)
@@ -26,17 +28,7 @@ class LLMClient:
     def chat(self, system_prompt: str, user_message: str) -> str:
         """
         Generate an AI response using Gemini.
-
-        Parameters:
-        - system_prompt: Instructions / role definition
-        - user_message: User question + context
-
-        Returns:
-        - Generated text response
         """
-
-        if not self.client:
-            return "Gemini API key not configured."
 
         try:
             response = self.client.models.generate_content(
@@ -52,7 +44,10 @@ class LLMClient:
                 },
             )
 
-            return response.text.strip() if response.text else "No response generated."
+            if not response or not response.text:
+                return "No response generated."
+
+            return response.text.strip()
 
         except Exception as e:
             # Never crash the app because of AI
