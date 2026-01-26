@@ -26,10 +26,10 @@ import {
 
 // Mock data
 const marketData = [
-  { name: 'BTC', price: '$42,150', change: '+2.5%', isUp: true },
-  { name: 'ETH', price: '$2,280', change: '+1.8%', isUp: true },
-  { name: 'AAPL', price: '$178.25', change: '-0.5%', isUp: false },
-  { name: 'TSLA', price: '$245.80', change: '+3.2%', isUp: true },
+  { name: 'BTC', price: '₹42,150', change: '+2.5%', isUp: true },
+  { name: 'ETH', price: '₹2,280', change: '+1.8%', isUp: true },
+  { name: 'RELIANCE', price: '₹2,478.25', change: '-0.5%', isUp: false },
+  { name: 'TCS', price: '₹3,245.80', change: '+3.2%', isUp: true },
 ];
 
 const predictionsData = [
@@ -91,7 +91,7 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">Total Portfolio</p>
               <DollarSign className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-2xl font-bold">$125,420</p>
+            <p className="text-2xl font-bold">₹1,25,420</p>
             <p className="text-sm text-accent flex items-center gap-1 mt-1">
               <ArrowUp className="h-3 w-3" />
               +12.5% this month
@@ -105,7 +105,7 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">Total Returns</p>
               <TrendingUp className="h-4 w-4 text-accent" />
             </div>
-            <p className="text-2xl font-bold">$25,420</p>
+            <p className="text-2xl font-bold">₹25,420</p>
             <p className="text-sm text-accent flex items-center gap-1 mt-1">
               <ArrowUp className="h-3 w-3" />
               +25.4% ROI
@@ -317,7 +317,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex justify-between mb-2">
                   <span className="text-sm text-muted-foreground">VaR (95%)</span>
-                  <span className="text-sm font-semibold">$2,450</span>
+                  <span className="text-sm font-semibold">₹2,450</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div

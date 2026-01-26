@@ -1,14 +1,13 @@
 from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.core.config import settings
 from app.api.v1 import auth, market, chat, health, ws_market
 from app.db.session import engine
 from app.models import Base
 from app.api.v1.upstox import router as upstox_router
-
-load_dotenv()
 
 # -----------------------------
 # Create FastAPI app

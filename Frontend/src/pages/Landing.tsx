@@ -92,7 +92,7 @@ export default function Landing() {
             </Link>
             <Link to="/signup">
               <Button className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-smooth glow-primary">
-                Get Started
+                New User
               </Button>
             </Link>
           </div>
@@ -146,7 +146,7 @@ export default function Landing() {
                   size="lg"
                   className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-smooth glow-primary text-lg px-8"
                 >
-                  Start Free Trial
+                  New User
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
@@ -156,7 +156,7 @@ export default function Landing() {
                   variant="outline"
                   className="glass hover:glass-strong transition-smooth text-lg px-8"
                 >
-                  View Demo
+                  Login
                 </Button>
               </Link>
             </motion.div>

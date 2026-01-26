@@ -18,7 +18,7 @@ const WS_BASE =
   import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000";
 
 export default function Market() {
-  const [symbol, setSymbol] = useState("AAPL");
+  const [symbol, setSymbol] = useState("RELIANCE");
   const [timeframe, setTimeframe] = useState("5");
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export default function Market() {
         <Input
           value={symbol}
           onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          placeholder="AAPL, TSLA, BTCUSDT"
+          placeholder="RELIANCE, TCS, INFY, BTCUSDT"
         />
       </Card>
 
@@ -145,7 +145,7 @@ export default function Market() {
                 {symbol}
                 {livePrice && (
                   <span className="ml-2 text-primary">
-                    ${livePrice.toFixed(2)}
+                    ₹{livePrice.toFixed(2)}
                   </span>
                 )}
               </h2>

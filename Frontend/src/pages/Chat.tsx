@@ -16,7 +16,7 @@ interface Message {
 }
 
 const quickPrompts = [
-  'Analyze AAPL stock',
+  'Analyze TCS stock',
   'Summarize market trends',
   'Explain portfolio volatility',
   'Bitcoin price prediction',

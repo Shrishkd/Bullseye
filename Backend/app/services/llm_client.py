@@ -19,26 +19,24 @@ class LLMClient:
                 "Ensure it is set in backend/.env and the server is restarted."
             )
 
-        # Initialize Gemini client
         self.client = genai.Client(api_key=api_key)
-
-        # Default model (fast + cost-efficient)
-        self.model_name = "gemini-1.5-flash"
+        self.model_name = "gemini-2.5-flash"
 
     def chat(self, system_prompt: str, user_message: str) -> str:
-        """
-        Generate an AI response using Gemini.
-        """
-
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=f"""
-{system_prompt}
-
-{user_message}
-""",
-                generation_config={
+                contents=[
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": f"{system_prompt}\n\n{user_message}"
+                            }
+                        ],
+                    }
+                ],
+                config={
                     "temperature": 0.4,
                     "max_output_tokens": 512,
                 },
@@ -50,5 +48,4 @@ class LLMClient:
             return response.text.strip()
 
         except Exception as e:
-            # Never crash the app because of AI
             return f"AI service error: {str(e)}"
