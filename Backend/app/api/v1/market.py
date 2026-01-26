@@ -67,7 +67,11 @@ async def get_candles(
     period: int = 14,
     user=Depends(get_current_user),
 ):
-    candles = await fetch_candles(symbol, resolution)
+    from app.services.market_providers.router import get_provider
+
+    provider = await get_provider(symbol)
+    candles = await provider.fetch_candles(symbol, resolution)
+
     
     if not candles:
         return []

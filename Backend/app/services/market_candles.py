@@ -36,8 +36,9 @@ async def fetch_candles(symbol: str, resolution="5", limit=100):
 
     # ❗ DO NOT raise_for_status blindly
     if r.status_code != 200:
-        # Graceful degradation instead of 502
-        return []
+        print(f"Finnhub candle error {r.status_code}: {r.text}")
+    return []
+
 
     data = r.json()
 

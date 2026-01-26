@@ -1,4 +1,3 @@
-# app/core/config.py
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -18,7 +17,7 @@ class Settings(BaseSettings):
     # =====================
     SECRET_KEY: str = "dev-secret-key"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # ✅ FIXED
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # =====================
     # AI / ML
@@ -30,6 +29,13 @@ class Settings(BaseSettings):
     # MARKET DATA
     # =====================
     FINNHUB_API_KEY: str | None = None
+
+    # =====================
+    # UPSTOX
+    # =====================
+    UPSTOX_API_KEY: str | None = None
+    UPSTOX_API_SECRET: str | None = None
+    UPSTOX_REDIRECT_URI: str | None = None
 
     class Config:
         env_file = ".env"

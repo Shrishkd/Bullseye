@@ -1,38 +1,29 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+# app/api/v1/ws_market.py
+
+from fastapi import WebSocket, APIRouter
+from app.services.market_providers.router import get_provider
 import asyncio
-from app.services.market_data import fetch_quote_finnhub
 
 router = APIRouter()
-
-active_connections: dict[str, set[WebSocket]] = {}
 
 @router.websocket("/ws/market/{symbol}")
 async def market_ws(websocket: WebSocket, symbol: str):
     await websocket.accept()
-    symbol = symbol.upper()
 
-    if symbol not in active_connections:
-        active_connections[symbol] = set()
-
-    active_connections[symbol].add(websocket)
+    provider = await get_provider(symbol)
 
     try:
         while True:
-            price = await fetch_quote_finnhub(symbol)
+            quote = await provider.fetch_quote(symbol)
 
-            # Finnhub safety checks
-            last_price = price.get("c")
+            price = quote.get("price") if isinstance(quote, dict) else None
+            if price is not None:
+                await websocket.send_json({
+                    "symbol": symbol,
+                    "price": price,
+                })
 
-            if last_price is None:
-                # Skip sending invalid tick instead of crashing
-                await asyncio.sleep(1)
-                return
+            await asyncio.sleep(1)
 
-            await websocket.send_json({
-                "symbol": symbol,
-                "price": last_price,
-            })
-
-            await asyncio.sleep(2)  # stream every 2 seconds
-    except WebSocketDisconnect:
-        active_connections[symbol].remove(websocket)
+    except Exception:
+        await websocket.close()
