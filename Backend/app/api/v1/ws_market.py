@@ -18,12 +18,21 @@ async def market_ws(websocket: WebSocket, symbol: str):
 
     try:
         while True:
-            price = fetch_quote_finnhub(symbol)
+            price = await fetch_quote_finnhub(symbol)
+
+            # Finnhub safety checks
+            last_price = price.get("c")
+
+            if last_price is None:
+                # Skip sending invalid tick instead of crashing
+                await asyncio.sleep(1)
+                return
+
             await websocket.send_json({
                 "symbol": symbol,
-                "price": price["c"],
-                "timestamp": price["t"]
+                "price": last_price,
             })
+
             await asyncio.sleep(2)  # stream every 2 seconds
     except WebSocketDisconnect:
         active_connections[symbol].remove(websocket)

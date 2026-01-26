@@ -63,11 +63,14 @@ async def get_recent_prices(
 @router.get("/candles/{symbol}")
 async def get_candles(
     symbol: str,
-    resolution: str = "5",   # 1,5,15,60,D
+    resolution: str = "5",
     period: int = 14,
     user=Depends(get_current_user),
 ):
-    candles = fetch_candles(symbol, resolution)
+    candles = await fetch_candles(symbol, resolution)
+    
+    if not candles:
+        return []
 
     closes = [c["close"] for c in candles]
 

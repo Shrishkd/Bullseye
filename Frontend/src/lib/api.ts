@@ -55,8 +55,9 @@ async function request<T = any>(
 
   // Auto-logout on unauthorized
   if (res.status === 401) {
-    setToken(null);
+    console.warn("Unauthorized request:", path);
   }
+
 
   // Parse response safely
   const text = await res.text();

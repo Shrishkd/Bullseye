@@ -1,13 +1,27 @@
 import os
 import httpx
 from datetime import datetime
+from fastapi import HTTPException
 
 FINNHUB_URL = "https://finnhub.io/api/v1/stock/candle"
 
-def fetch_candles(symbol: str, resolution="5", limit=100):
+async def fetch_candles(symbol: str, resolution="5", limit=100):
     token = os.getenv("FINNHUB_API_KEY")
+    if not token:
+        raise HTTPException(status_code=500, detail="Finnhub API key not configured")
+
+    # ✅ FREE-TIER SAFE NORMALIZATION
+    # If equity symbol and intraday requested → force Daily
+    if symbol.isalpha() and resolution in {"1", "5", "15"}:
+        resolution = "D"
+
     now = int(datetime.utcnow().timestamp())
-    start = now - (limit * 60 * int(resolution))
+
+    if resolution.isdigit():
+        start = now - (limit * 60 * int(resolution))
+    else:
+        # Daily candles → 1 day = 86400 sec
+        start = now - (limit * 86400)
 
     params = {
         "symbol": symbol,
@@ -17,8 +31,14 @@ def fetch_candles(symbol: str, resolution="5", limit=100):
         "token": token,
     }
 
-    r = httpx.get(FINNHUB_URL, params=params, timeout=10)
-    r.raise_for_status()
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.get(FINNHUB_URL, params=params)
+
+    # ❗ DO NOT raise_for_status blindly
+    if r.status_code != 200:
+        # Graceful degradation instead of 502
+        return []
+
     data = r.json()
 
     if data.get("s") != "ok":
