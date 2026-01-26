@@ -69,10 +69,10 @@ async def get_candles(
 ):
     from app.services.market_providers.router import get_provider
 
-    provider = await get_provider(symbol)
-    candles = await provider.fetch_candles(symbol, resolution)
+    provider, resolved_symbol = await get_provider(symbol)
+    candles = await provider.fetch_candles(resolved_symbol, resolution)
 
-    
+
     if not candles:
         return []
 

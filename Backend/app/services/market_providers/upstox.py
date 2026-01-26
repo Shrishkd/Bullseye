@@ -2,7 +2,7 @@
 
 import os
 import httpx
-from datetime import datetime
+from datetime import datetime, timedelta
 from .base import MarketProvider
 
 UPSTOX_BASE_URL = "https://api.upstox.com/v2"
@@ -31,12 +31,7 @@ class UpstoxProvider(MarketProvider):
     # QUOTE (LTP)
     # -----------------------------
     async def fetch_quote(self, instrument_key: str) -> dict:
-        """
-        instrument_key example:
-        NSE_EQ|INE002A01018  (RELIANCE)
-        """
-
-        if not self.access_token:
+        if not self.access_token or "|" not in instrument_key:
             return {}
 
         url = f"{UPSTOX_BASE_URL}/market-quote/ltp"
@@ -57,13 +52,15 @@ class UpstoxProvider(MarketProvider):
         if not quote or "last_price" not in quote:
             return {}
 
+        ohlc = quote.get("ohlc", {})
+
         return {
             "price": float(quote["last_price"]),
-            "open": float(quote.get("ohlc", {}).get("open", quote["last_price"])),
-            "high": float(quote.get("ohlc", {}).get("high", quote["last_price"])),
-            "low": float(quote.get("ohlc", {}).get("low", quote["last_price"])),
+            "open": float(ohlc.get("open", quote["last_price"])),
+            "high": float(ohlc.get("high", quote["last_price"])),
+            "low": float(ohlc.get("low", quote["last_price"])),
             "timestamp": int(datetime.utcnow().timestamp()),
-            "volume": 0.0,
+            "volume": float(quote.get("volume", 0.0)),
         }
 
     # -----------------------------
@@ -75,15 +72,8 @@ class UpstoxProvider(MarketProvider):
         resolution: str,
         limit: int = 100,
     ) -> list[dict]:
-        """
-        resolution mapping:
-        "1"  -> 1minute
-        "5"  -> 5minute
-        "15" -> 15minute
-        "D"  -> day
-        """
 
-        if not self.access_token:
+        if not self.access_token or "|" not in instrument_key:
             return []
 
         interval_map = {
@@ -94,36 +84,47 @@ class UpstoxProvider(MarketProvider):
         }
 
         interval = interval_map.get(resolution, "day")
+        now = datetime.utcnow()
 
-        to_dt = datetime.utcnow()
-        from_dt = to_dt
+        async with httpx.AsyncClient(timeout=15) as client:
 
-        if interval == "day":
-            from_dt = to_dt.replace(hour=0, minute=0, second=0)
-        else:
-            from_dt = to_dt
+            # -----------------------------
+            # DAILY / HISTORICAL
+            # -----------------------------
+            if interval == "day":
+                to_date = now.date().isoformat()
+                from_date = (now.date() - timedelta(days=limit)).isoformat()
 
-        url = f"{UPSTOX_BASE_URL}/historical-candle/intraday/{instrument_key}/{interval}"
+                url = (
+                    f"{UPSTOX_BASE_URL}/historical-candle/"
+                    f"{instrument_key}/{interval}/"
+                    f"{from_date}/{to_date}"
+                )
 
-        params = {
-            "from_date": from_dt.strftime("%Y-%m-%d"),
-            "to_date": to_dt.strftime("%Y-%m-%d"),
-        }
+                r = await client.get(url, headers=self._headers())
 
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(url, headers=self._headers(), params=params)
+            # -----------------------------
+            # INTRADAY
+            # -----------------------------
+            else:
+                url = (
+                    f"{UPSTOX_BASE_URL}/historical-candle/intraday/"
+                    f"{instrument_key}/{interval}"
+                )
+
+                r = await client.get(url, headers=self._headers())
 
         if r.status_code != 200:
             return []
 
-        raw = r.json().get("data", {}).get("candles", [])
-        if not raw:
+        payload = r.json()
+        data = payload.get("data", {}).get("candles", [])
+
+        if not data:
             return []
 
         candles = []
-        for c in raw[-limit:]:
-            # Upstox candle format:
-            # [timestamp, open, high, low, close, volume]
+        for c in data[-limit:]:
             candles.append({
                 "time": int(datetime.fromisoformat(c[0]).timestamp() * 1000),
                 "open": float(c[1]),

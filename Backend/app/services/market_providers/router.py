@@ -1,15 +1,16 @@
 from .finnhub import FinnhubProvider
 from .upstox import UpstoxProvider
+from app.services.symbol_resolver import resolver
 
 
 async def get_provider(symbol: str):
     """
-    Provider selection rule:
-    - NSE_/BSE_ instrument keys → Upstox
-    - Everything else → Finnhub
+    Resolve symbol → instrument key and select provider.
     """
 
-    if symbol.startswith("NSE_") or symbol.startswith("BSE_") or "|" in symbol:
-        return UpstoxProvider()
+    resolved = await resolver.resolve(symbol)
 
-    return FinnhubProvider()
+    if resolved.startswith("NSE_EQ"):
+        return UpstoxProvider(), resolved
+
+    return FinnhubProvider(), symbol

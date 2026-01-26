@@ -10,11 +10,11 @@ router = APIRouter()
 async def market_ws(websocket: WebSocket, symbol: str):
     await websocket.accept()
 
-    provider = await get_provider(symbol)
+    provider, resolved_symbol = await get_provider(symbol)
 
     try:
         while True:
-            quote = await provider.fetch_quote(symbol)
+            quote = await provider.fetch_quote(resolved_symbol)
 
             price = quote.get("price") if isinstance(quote, dict) else None
             if price is not None:
