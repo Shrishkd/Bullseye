@@ -168,6 +168,14 @@ export async function chatQuery(question: string, top_k = 5) {
 }
 
 /* ===============================
+   News APIs
+   =============================== */
+  export async function getBreakingNews() {
+  return request("/news/breaking");
+}
+
+
+/* ===============================
    Optional helpers
    =============================== */
 
