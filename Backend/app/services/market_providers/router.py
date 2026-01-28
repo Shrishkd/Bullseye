@@ -1,3 +1,5 @@
+# app/services/market_providers/router.py
+
 from .finnhub import FinnhubProvider
 from .upstox import UpstoxProvider
 from app.services.symbol_resolver import resolver
@@ -10,7 +12,9 @@ async def get_provider(symbol: str):
 
     resolved = await resolver.resolve(symbol)
 
-    if resolved.startswith("NSE_EQ"):
+    # ✅ Strict validation for Upstox
+    if isinstance(resolved, str) and resolved.startswith("NSE_EQ|"):
         return UpstoxProvider(), resolved
 
-    return FinnhubProvider(), symbol
+    # ❌ Fallback to Finnhub ONLY for non-Indian symbols
+    return FinnhubProvider(), symbol.upper()

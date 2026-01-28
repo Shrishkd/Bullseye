@@ -35,10 +35,7 @@ class UpstoxProvider(MarketProvider):
             return {}
 
         url = f"{UPSTOX_BASE_URL}/market-quote/ltp"
-
-        params = {
-            "instrument_key": instrument_key,
-        }
+        params = {"instrument_key": instrument_key}
 
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(url, headers=self._headers(), params=params)
@@ -74,34 +71,34 @@ class UpstoxProvider(MarketProvider):
     ) -> list[dict]:
 
         if not self.access_token or "|" not in instrument_key:
+            print("❌ Invalid Upstox instrument_key:", instrument_key)
             return []
 
         interval_map = {
             "1": "1minute",
             "5": "5minute",
             "15": "15minute",
+            "60": "60minute",
             "D": "day",
         }
 
         interval = interval_map.get(resolution, "day")
-        now = datetime.utcnow()
 
         async with httpx.AsyncClient(timeout=15) as client:
 
             # -----------------------------
-            # DAILY / HISTORICAL
+            # DAILY / HISTORICAL (FIXED)
             # -----------------------------
             if interval == "day":
-                to_date = now.date().isoformat()
-                from_date = (now.date() - timedelta(days=limit)).isoformat()
+                to_date = datetime.utcnow().date().isoformat()
+                from_date = (
+                    datetime.utcnow().date() - timedelta(days=365)
+                ).isoformat()
 
                 url = (
                     f"{UPSTOX_BASE_URL}/historical-candle/"
-                    f"{instrument_key}/{interval}/"
-                    f"{from_date}/{to_date}"
+                    f"{instrument_key}/day/{from_date}/{to_date}"
                 )
-
-                r = await client.get(url, headers=self._headers())
 
             # -----------------------------
             # INTRADAY
@@ -112,20 +109,22 @@ class UpstoxProvider(MarketProvider):
                     f"{instrument_key}/{interval}"
                 )
 
-                r = await client.get(url, headers=self._headers())
+            print("📡 Upstox candles URL:", url)
+
+            r = await client.get(url, headers=self._headers())
 
         if r.status_code != 200:
+            print("❌ Upstox error:", r.status_code, r.text)
             return []
 
         payload = r.json()
-        data = payload.get("data", {}).get("candles", [])
+        candles = payload.get("data", {}).get("candles", [])
 
-        if not data:
-            return []
+        print("🕯️ Candles received:", len(candles))
 
-        candles = []
-        for c in data[-limit:]:
-            candles.append({
+        result = []
+        for c in candles[-limit:]:
+            result.append({
                 "time": int(datetime.fromisoformat(c[0]).timestamp() * 1000),
                 "open": float(c[1]),
                 "high": float(c[2]),
@@ -134,4 +133,4 @@ class UpstoxProvider(MarketProvider):
                 "volume": float(c[5]),
             })
 
-        return candles
+        return result

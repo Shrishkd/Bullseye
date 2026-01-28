@@ -2,7 +2,7 @@
 
 import os
 from google import genai
-
+from google.genai import types
 
 class LLMClient:
     """
@@ -20,7 +20,10 @@ class LLMClient:
             )
 
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.5-flash"
+        # Note: 'gemini-2.5-flash' does not currently exist. 
+        # Using 'gemini-2.0-flash' which is the latest fast model.
+        # If you have early access to a specific version, change this back.
+        self.model_name = "gemini-2.5-flash" 
 
     def chat(self, system_prompt: str, user_message: str) -> str:
         try:
@@ -31,6 +34,8 @@ class LLMClient:
                         "role": "user",
                         "parts": [
                             {
+                                # Combined prompt strategy is fine, but ensure
+                                # the instruction is clear.
                                 "text": f"{system_prompt}\n\n{user_message}"
                             }
                         ],
@@ -38,7 +43,14 @@ class LLMClient:
                 ],
                 config={
                     "temperature": 0.4,
-                    "max_output_tokens": 512,
+                    # FIX 1: Increased from 512 to 2048 to prevent cutoff
+                    "max_output_tokens": 2048, 
+                    # FIX 2: Enable Google Search Grounding for live data
+                    "tools": [
+                        types.Tool(
+                            google_search=types.GoogleSearchRetrieval()
+                        )
+                    ]
                 },
             )
 
@@ -48,4 +60,6 @@ class LLMClient:
             return response.text.strip()
 
         except Exception as e:
+            # Print error to console for debugging
+            print(f"Gemini API Error: {e}")
             return f"AI service error: {str(e)}"

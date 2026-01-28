@@ -1,8 +1,7 @@
-# app/api/v1/ws_market.py
-
 from fastapi import WebSocket, APIRouter
 from app.services.market_providers.router import get_provider
 import asyncio
+from starlette.websockets import WebSocketDisconnect
 
 router = APIRouter()
 
@@ -16,14 +15,23 @@ async def market_ws(websocket: WebSocket, symbol: str):
         while True:
             quote = await provider.fetch_quote(resolved_symbol)
 
-            price = quote.get("price") if isinstance(quote, dict) else None
-            if price is not None:
-                await websocket.send_json({
-                    "symbol": symbol,
-                    "price": price,
-                })
+            if isinstance(quote, dict) and "price" in quote:
+                try:
+                    await websocket.send_json({
+                        "symbol": symbol,
+                        "price": quote["price"],
+                    })
+                except WebSocketDisconnect:
+                    break
 
             await asyncio.sleep(1)
 
-    except Exception:
-        await websocket.close()
+    except WebSocketDisconnect:
+        pass
+
+    except Exception as e:
+        print("WebSocket error:", e)
+
+    finally:
+        # ✅ DO NOT call send() or close() again
+        pass

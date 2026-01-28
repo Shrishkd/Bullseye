@@ -21,7 +21,7 @@ async def chat_query(
     user=Depends(get_current_user),
 ):
     """
-    Main AI chat endpoint for Bullock.
+    Main AI chat endpoint for BullSeye.
     Uses:
     - Embeddings (RAG-ready)
     - Gemini LLM
@@ -45,6 +45,7 @@ async def chat_query(
         "You are Bullseye, an AI-powered investment and trading assistant. "
         "You help users understand markets, stocks, crypto, and portfolio risk. "
         "Use provided context when available. "
+        "Fetch current stock price from internet"
         "If context is empty, provide general educational guidance. "
         "Do NOT give guaranteed financial advice or promises."
     )
@@ -87,6 +88,7 @@ async def explain_indicators(
         "You are Bullseye, an AI-powered investment assistant. "
         "Explain technical indicators in a simple, educational way. "
         "Do not give direct buy/sell advice or guarantees."
+        "Fetch current stock price from internet"
     )
 
     user_message = f"""

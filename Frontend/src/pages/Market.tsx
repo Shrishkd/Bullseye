@@ -10,6 +10,7 @@ import CandlestickChart from "@/components/CandlestickChart";
 import { getCandles, explainIndicators } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
+import { useDebounce } from "@/hooks/useDebounce";
 
 /* ===============================
    Constants
@@ -18,9 +19,16 @@ const WS_BASE =
   import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000";
 
 export default function Market() {
+  /* ===============================
+     State
+     =============================== */
   const [symbol, setSymbol] = useState("RELIANCE");
+  const debouncedSymbol = useDebounce(symbol, 600);
+
   const [timeframe, setTimeframe] = useState("5");
   const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
 
@@ -31,51 +39,71 @@ export default function Market() {
      LIVE PRICE STREAM (WebSocket)
      =============================== */
   useEffect(() => {
-    if (!isAuthenticated || !symbol) {
+    if (!isAuthenticated || !debouncedSymbol) {
       wsRef.current?.close();
+      setWsConnected(false);
       return;
     }
 
     wsRef.current?.close();
 
-    const ws = new WebSocket(`${WS_BASE}/ws/market/${symbol}`);
+    const ws = new WebSocket(
+      `${WS_BASE}/ws/market/${encodeURIComponent(debouncedSymbol)}`
+    );
+
     wsRef.current = ws;
 
+    ws.onopen = () => {
+      setWsConnected(true);
+    };
+
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setLivePrice(data.price);
+      try {
+        const data = JSON.parse(event.data);
+        if (typeof data.price === "number") {
+          setLivePrice(data.price);
+        }
+      } catch {
+        // ignore malformed messages
+      }
     };
 
     ws.onerror = () => {
-      toast.error("Live market stream error");
+      // non-fatal: REST candles still work
+      setWsConnected(false);
+      console.warn("WebSocket error");
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
     };
 
     return () => {
       ws.close();
     };
-  }, [symbol, isAuthenticated]);
+  }, [debouncedSymbol, isAuthenticated]);
 
   /* ===============================
-     CANDLESTICKS + INDICATORS (REST)
+     CANDLESTICKS (REST) — FIXED
      =============================== */
   const {
     data: candles,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["candles", symbol, timeframe],
-    queryFn: () => getCandles(symbol, timeframe),
-    enabled: isAuthenticated && !!symbol,
+    queryKey: ["candles", debouncedSymbol, timeframe],
+    queryFn: () => getCandles(debouncedSymbol, timeframe),
+    enabled: isAuthenticated && !!debouncedSymbol,
     staleTime: 60 * 1000,
     retry: false,
   });
 
   /* ===============================
-     Error handling (NO toast spam)
+     Error handling (no spam)
      =============================== */
   useEffect(() => {
     if (error instanceof Error) {
-      toast.error("Failed to load market data");
+      toast.error("Failed to load market candles");
     }
   }, [error]);
 
@@ -92,7 +120,7 @@ export default function Market() {
 
     try {
       const res = await explainIndicators({
-        symbol,
+        symbol: debouncedSymbol,
         price: livePrice ?? latestCandle.close,
         rsi: latestCandle.rsi,
         sma: latestCandle.sma,
@@ -129,8 +157,13 @@ export default function Market() {
         </label>
         <Input
           value={symbol}
-          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          placeholder="RELIANCE, TCS, INFY, BTCUSDT"
+          onChange={(e) => {
+            const value = e.target.value
+              .toUpperCase()
+              .replace(/[^A-Z]/g, "");
+            setSymbol(value);
+          }}
+          placeholder="RELIANCE, TCS, INFY"
         />
       </Card>
 
@@ -142,19 +175,25 @@ export default function Market() {
             <div className="flex items-center gap-3">
               <TrendingUp className="h-6 w-6 text-primary" />
               <h2 className="text-2xl font-semibold">
-                {symbol}
-                {livePrice && (
+                {debouncedSymbol}
+                {livePrice && livePrice > 0 ? (
                   <span className="ml-2 text-primary">
-                    ₹{livePrice.toFixed(2)}
+                  ₹{livePrice.toFixed(2)}
+                  </span>
+                ) : (
+                  <span className="ml-2 text-muted-foreground text-sm">
+                    Market Closed
                   </span>
                 )}
               </h2>
             </div>
 
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Wifi className="h-4 w-4 text-green-500" />
-              LIVE
-            </div>
+            {wsConnected && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Wifi className="h-4 w-4 text-green-500" />
+                LIVE
+              </div>
+            )}
           </div>
 
           {/* Timeframe Selector */}
