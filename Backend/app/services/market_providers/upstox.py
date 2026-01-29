@@ -9,29 +9,17 @@ UPSTOX_BASE_URL = "https://api.upstox.com/v2"
 
 
 class UpstoxProvider(MarketProvider):
-    """
-    Upstox market data provider (India-focused).
-    Supports:
-    - Quotes (LTP)
-    - Historical & intraday candles
-    """
-
     def __init__(self):
         self.access_token = os.getenv("UPSTOX_ACCESS_TOKEN")
 
-    def _headers(self) -> dict:
-        if not self.access_token:
-            return {}
+    def _headers(self):
         return {
             "Authorization": f"Bearer {self.access_token}",
             "Accept": "application/json",
         }
 
-    # -----------------------------
-    # QUOTE (LTP)
-    # -----------------------------
     async def fetch_quote(self, instrument_key: str) -> dict:
-        if not self.access_token or "|" not in instrument_key:
+        if not self.access_token:
             return {}
 
         url = f"{UPSTOX_BASE_URL}/market-quote/ltp"
@@ -44,34 +32,17 @@ class UpstoxProvider(MarketProvider):
             return {}
 
         data = r.json().get("data", {})
-        quote = data.get(instrument_key)
-
-        if not quote or "last_price" not in quote:
+        q = data.get(instrument_key)
+        if not q:
             return {}
 
-        ohlc = quote.get("ohlc", {})
-
         return {
-            "price": float(quote["last_price"]),
-            "open": float(ohlc.get("open", quote["last_price"])),
-            "high": float(ohlc.get("high", quote["last_price"])),
-            "low": float(ohlc.get("low", quote["last_price"])),
+            "price": float(q["last_price"]),
             "timestamp": int(datetime.utcnow().timestamp()),
-            "volume": float(quote.get("volume", 0.0)),
         }
 
-    # -----------------------------
-    # CANDLES (OHLCV)
-    # -----------------------------
-    async def fetch_candles(
-        self,
-        instrument_key: str,
-        resolution: str,
-        limit: int = 100,
-    ) -> list[dict]:
-
-        if not self.access_token or "|" not in instrument_key:
-            print("❌ Invalid Upstox instrument_key:", instrument_key)
+    async def fetch_candles(self, instrument_key: str, resolution: str, limit=100):
+        if not self.access_token:
             return []
 
         interval_map = {
@@ -85,52 +56,30 @@ class UpstoxProvider(MarketProvider):
         interval = interval_map.get(resolution, "day")
 
         async with httpx.AsyncClient(timeout=15) as client:
-
-            # -----------------------------
-            # DAILY / HISTORICAL (FIXED)
-            # -----------------------------
             if interval == "day":
-                to_date = datetime.utcnow().date().isoformat()
-                from_date = (
-                    datetime.utcnow().date() - timedelta(days=365)
-                ).isoformat()
+                to_date = datetime.utcnow().date()
+                from_date = to_date - timedelta(days=limit)
 
-                url = (
-                    f"{UPSTOX_BASE_URL}/historical-candle/"
-                    f"{instrument_key}/day/{from_date}/{to_date}"
-                )
-
-            # -----------------------------
-            # INTRADAY
-            # -----------------------------
+                url = f"{UPSTOX_BASE_URL}/historical-candle/{instrument_key}/{interval}/{from_date}/{to_date}"
             else:
-                url = (
-                    f"{UPSTOX_BASE_URL}/historical-candle/intraday/"
-                    f"{instrument_key}/{interval}"
-                )
-
-            print("📡 Upstox candles URL:", url)
+                url = f"{UPSTOX_BASE_URL}/historical-candle/intraday/{instrument_key}/{interval}"
 
             r = await client.get(url, headers=self._headers())
 
         if r.status_code != 200:
-            print("❌ Upstox error:", r.status_code, r.text)
             return []
 
-        payload = r.json()
-        candles = payload.get("data", {}).get("candles", [])
+        raw = r.json().get("data", {}).get("candles", [])
+        candles = []
 
-        print("🕯️ Candles received:", len(candles))
-
-        result = []
-        for c in candles[-limit:]:
-            result.append({
+        for c in raw[-limit:]:
+            candles.append({
                 "time": int(datetime.fromisoformat(c[0]).timestamp() * 1000),
-                "open": float(c[1]),
-                "high": float(c[2]),
-                "low": float(c[3]),
-                "close": float(c[4]),
-                "volume": float(c[5]),
+                "open": c[1],
+                "high": c[2],
+                "low": c[3],
+                "close": c[4],
+                "volume": c[5],
             })
 
-        return result
+        return candles
