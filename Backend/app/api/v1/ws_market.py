@@ -1,37 +1,51 @@
-from fastapi import WebSocket, APIRouter
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.services.market_providers.router import get_provider
 import asyncio
-from starlette.websockets import WebSocketDisconnect
 
 router = APIRouter()
 
+
 @router.websocket("/ws/market/{symbol}")
 async def market_ws(websocket: WebSocket, symbol: str):
+    """
+    WebSocket endpoint for live market price updates.
+    Auth intentionally disabled for stability.
+    """
+
     await websocket.accept()
 
-    provider, resolved_symbol = await get_provider(symbol)
-
     try:
+        # Resolve provider + instrument key
+        provider, instrument_key = await get_provider(symbol)
+
+        # Send initial LTP
+        quote = await provider.fetch_quote(instrument_key)
+        await websocket.send_json({
+            "symbol": symbol,
+            "price": quote.get("price"),
+            "type": "initial"
+        })
+
+        # Poll every 1 second
         while True:
-            quote = await provider.fetch_quote(resolved_symbol)
-
-            if isinstance(quote, dict) and "price" in quote:
-                try:
-                    await websocket.send_json({
-                        "symbol": symbol,
-                        "price": quote["price"],
-                    })
-                except WebSocketDisconnect:
-                    break
-
             await asyncio.sleep(1)
 
+            quote = await provider.fetch_quote(instrument_key)
+            if not quote:
+                continue
+
+            await websocket.send_json({
+                "symbol": symbol,
+                "price": quote.get("price"),
+                "type": "update"
+            })
+
     except WebSocketDisconnect:
-        pass
+        print(f"WebSocket disconnected for {symbol}")
 
     except Exception as e:
         print("WebSocket error:", e)
-
-    finally:
-        # ✅ DO NOT call send() or close() again
-        pass
+        try:
+            await websocket.send_json({"error": str(e)})
+        finally:
+            await websocket.close()

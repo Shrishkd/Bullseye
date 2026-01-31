@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import auth, market, chat, health, ws_market, news
+from app.services.instrument_registry import load_instruments
 from app.db.session import engine
 from app.models import Base
 
@@ -33,12 +34,18 @@ app.add_middleware(
 )
 
 # -----------------------------
-# 🔥 CREATE DATABASE TABLES ON STARTUP
+# 🔥 STARTUP TASKS
 # -----------------------------
 @app.on_event("startup")
 async def on_startup():
+    # 1️⃣ Create DB tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # 2️⃣ Load ALL NSE instruments (once at startup)
+    load_instruments()
+
+    print("✅ Startup completed: DB ready, NSE instruments loaded")
 
 # -----------------------------
 # Routers
@@ -49,7 +56,6 @@ app.include_router(market.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(ws_market.router)
 app.include_router(news.router, prefix="/api")
-
 
 # -----------------------------
 # Root endpoint

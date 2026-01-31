@@ -2,7 +2,7 @@
 
 import os
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import pytz
 from .base import MarketProvider
 
@@ -11,6 +11,12 @@ IST = pytz.timezone("Asia/Kolkata")
 
 # Upstox API limitation - max date they have data for (update this as needed)
 UPSTOX_MAX_DATE = datetime(2025, 10, 23).date()
+
+def is_market_open():
+    now = datetime.now(IST)
+    if now.weekday() >= 5:
+        return False
+    return time(9, 15) <= now.time() <= time(15, 30)
 
 
 class UpstoxProvider(MarketProvider):

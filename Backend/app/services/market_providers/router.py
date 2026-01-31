@@ -1,10 +1,8 @@
-from .upstox import UpstoxProvider
-from app.services.symbol_resolver import resolver
+from app.services.symbol_resolver import get_instrument_key
+from app.services.market_providers.upstox import UpstoxProvider
+
 
 async def get_provider(symbol: str):
-    resolved = await resolver.resolve(symbol)
-
-    if not isinstance(resolved, str) or "|" not in resolved:
-        raise ValueError(f"Invalid symbol or instrument key: {symbol}")
-
-    return UpstoxProvider(), resolved
+    instrument_key = get_instrument_key(symbol)
+    provider = UpstoxProvider()
+    return provider, instrument_key
