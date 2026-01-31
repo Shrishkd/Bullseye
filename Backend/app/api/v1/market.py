@@ -1,3 +1,5 @@
+# app/api/v1/market.py
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,23 +7,25 @@ from app.schemas import PriceIn, PriceOut, AssetOut
 from app.crud import assets as assets_crud, prices as prices_crud
 from app.api.deps import get_db, get_current_user
 
-from fastapi import APIRouter, Depends
-from app.services.market_candles import fetch_candles
-from app.services.indicators import sma, ema
-from app.api.deps import get_current_user
-
 from app.services.indicators import sma, ema, rsi
+from app.services.market_providers.router import get_provider
 
 router = APIRouter(prefix="/market", tags=["market"])
 
 
+# ===============================
+# INGEST PRICE (manual / bots)
+# ===============================
 @router.post("/prices/ingest")
 async def ingest_price(
     payload: PriceIn,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    asset = await assets_crud.create_asset_if_not_exists(db, payload.asset_symbol)
+    asset = await assets_crud.create_asset_if_not_exists(
+        db, payload.asset_symbol
+    )
+
     price = await prices_crud.create_price(
         db,
         asset_id=asset.id,
@@ -32,9 +36,13 @@ async def ingest_price(
         close=payload.close,
         volume=payload.volume,
     )
+
     return {"status": "ok", "price_id": price.id}
 
 
+# ===============================
+# ASSET METADATA
+# ===============================
 @router.get("/assets/{symbol}", response_model=AssetOut)
 async def get_asset(
     symbol: str,
@@ -47,6 +55,9 @@ async def get_asset(
     return asset
 
 
+# ===============================
+# RECENT PRICES (DB)
+# ===============================
 @router.get("/prices/{symbol}", response_model=list[PriceOut])
 async def get_recent_prices(
     symbol: str,
@@ -57,9 +68,14 @@ async def get_recent_prices(
     asset = await assets_crud.get_asset_by_symbol(db, symbol)
     if not asset:
         raise HTTPException(404, "Asset not found")
-    prices = await prices_crud.get_recent_prices(db, asset.id, limit)
-    return prices[::-1]  # return oldest → newest
 
+    prices = await prices_crud.get_recent_prices(db, asset.id, limit)
+    return prices[::-1]  # oldest → newest
+
+
+# ===============================
+# CANDLES (Upstox)
+# ===============================
 @router.get("/candles/{symbol}")
 async def get_candles(
     symbol: str,
@@ -67,15 +83,30 @@ async def get_candles(
     period: int = 14,
     user=Depends(get_current_user),
 ):
-    from app.services.market_providers.router import get_provider
+    """
+    Unified candle endpoint.
+    Uses provider router (Upstox).
+    """
 
     provider, resolved_symbol = await get_provider(symbol)
-    candles = await provider.fetch_candles(resolved_symbol, resolution)
 
+    if not resolved_symbol or "|" not in resolved_symbol:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid or unsupported symbol: {symbol}"
+        )
+
+    candles = await provider.fetch_candles(
+        instrument_key=resolved_symbol,
+        resolution=resolution,
+    )
 
     if not candles:
         return []
 
+    # ===============================
+    # Indicators
+    # ===============================
     closes = [c["close"] for c in candles]
 
     sma_vals = sma(closes, period)
@@ -83,9 +114,8 @@ async def get_candles(
     rsi_vals = rsi(closes, period)
 
     for i, c in enumerate(candles):
-        c["sma"] = sma_vals[i]
-        c["ema"] = ema_vals[i]
-        c["rsi"] = rsi_vals[i]
+        c["sma"] = sma_vals[i] if i < len(sma_vals) else None
+        c["ema"] = ema_vals[i] if i < len(ema_vals) else None
+        c["rsi"] = rsi_vals[i] if i < len(rsi_vals) else None
 
     return candles
-

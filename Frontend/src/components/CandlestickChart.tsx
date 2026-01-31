@@ -1,112 +1,156 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   createChart,
   CandlestickSeries,
   LineSeries,
   UTCTimestamp,
+  IChartApi,
+  ISeriesApi,
 } from "lightweight-charts";
 
-interface Candle {
-  time: number; // milliseconds from backend
+/* ===================== TYPES ===================== */
+
+type RawCandle = {
+  time: number;
   open: number;
   high: number;
   low: number;
   close: number;
-  sma?: number;
-  ema?: number;
-  rsi?: number;
-}
+  volume?: number;
+  ema?: number | null;
+};
 
-export default function CandlestickChart({ data }: { data: Candle[] }) {
-  const ref = useRef<HTMLDivElement>(null);
+type ChartData =
+  | {
+      candles?: RawCandle[];
+      ema?: { time: number; value: number }[];
+    }
+  | RawCandle[];
+
+type Props = {
+  data?: ChartData;
+};
+
+/* ===================== UTILS ===================== */
+
+const toUTCTime = (ms: number): UTCTimestamp =>
+  Math.floor(ms / 1000) as UTCTimestamp;
+
+/* ===================== COMPONENT ===================== */
+
+const CandlestickChart: React.FC<Props> = ({ data }) => {
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const chart = useRef<IChartApi | null>(null);
+  const candleSeries = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const emaSeries = useRef<ISeriesApi<"Line"> | null>(null);
+
+  /* -------- Normalize data shape -------- */
+  let candles: RawCandle[] = [];
+  let ema:
+    | {
+        time: number;
+        value: number;
+      }[]
+    | undefined;
+
+  if (Array.isArray(data)) {
+    // 1D case (raw array from backend)
+    candles = data;
+    ema = data
+      .filter((c) => typeof c.ema === "number")
+      .map((c) => ({ time: c.time, value: c.ema as number }));
+  } else if (data && Array.isArray(data.candles)) {
+    candles = data.candles;
+    ema = data.ema;
+  }
+
+  /* ===================== INIT CHART ===================== */
 
   useEffect(() => {
-    if (!ref.current || !data.length) return;
+    if (!chartRef.current) return;
 
-    ref.current.innerHTML = "";
-
-    const chart = createChart(ref.current, {
-      height: 520,
+    chart.current = createChart(chartRef.current, {
       layout: {
-        background: { color: "transparent" },
-        textColor: "#aaa",
+        background: { color: "#0d1117" },
+        textColor: "#d1d5db",
       },
       grid: {
-        vertLines: { color: "#222" },
-        horzLines: { color: "#222" },
+        vertLines: { color: "#1f2937" },
+        horzLines: { color: "#1f2937" },
       },
-      rightPriceScale: {
-        scaleMargins: { top: 0.1, bottom: 0.35 },
+      width: chartRef.current.clientWidth,
+      height: 420,
+      timeScale: {
+        timeVisible: true,
       },
     });
 
-    // ===== Series =====
-    const candleSeries = chart.addSeries(CandlestickSeries);
+    candleSeries.current = chart.current.addSeries(CandlestickSeries, {
+      upColor: "#22c55e",
+      downColor: "#ef4444",
+      wickUpColor: "#22c55e",
+      wickDownColor: "#ef4444",
+      borderVisible: false,
+    });
 
-    const smaSeries = chart.addSeries(LineSeries, {
-      color: "#4ade80",
+    emaSeries.current = chart.current.addSeries(LineSeries, {
+      color: "#f59e0b",
       lineWidth: 2,
     });
 
-    const emaSeries = chart.addSeries(LineSeries, {
-      color: "#60a5fa",
-      lineWidth: 2,
-    });
+    const resize = () => {
+      chart.current?.applyOptions({
+        width: chartRef.current!.clientWidth,
+      });
+    };
 
-    const rsiSeries = chart.addSeries(LineSeries, {
-      color: "#facc15",
-      lineWidth: 2,
-      priceScaleId: "rsi",
-    });
+    window.addEventListener("resize", resize);
 
-    chart.priceScale("rsi").applyOptions({
-      scaleMargins: { top: 0.75, bottom: 0 },
-    });
+    return () => {
+      window.removeEventListener("resize", resize);
+      chart.current?.remove();
+    };
+  }, []);
 
-    // ===== Data mapping (CRITICAL FIX) =====
-    candleSeries.setData(
-      data.map((d) => ({
-        time: Math.floor(d.time / 1000) as UTCTimestamp,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
+  /* ===================== SET CANDLES ===================== */
+
+  useEffect(() => {
+    if (!candleSeries.current || candles.length === 0) return;
+
+    candleSeries.current.setData(
+      candles.map((c) => ({
+        time: toUTCTime(c.time),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
       }))
     );
 
-    smaSeries.setData(
-      data
-        .filter((d) => d.sma !== null && d.sma !== undefined)
-        .map((d) => ({
-          time: Math.floor(d.time / 1000) as UTCTimestamp,
-          value: d.sma!,
-        }))
+    chart.current?.timeScale().fitContent();
+  }, [candles]);
+
+  /* ===================== SET EMA ===================== */
+
+  useEffect(() => {
+    if (!emaSeries.current || !ema || ema.length === 0) return;
+
+    emaSeries.current.setData(
+      ema.map((p) => ({
+        time: toUTCTime(p.time),
+        value: p.value,
+      }))
     );
+  }, [ema]);
 
-    emaSeries.setData(
-      data
-        .filter((d) => d.ema !== null && d.ema !== undefined)
-        .map((d) => ({
-          time: Math.floor(d.time / 1000) as UTCTimestamp,
-          value: d.ema!,
-        }))
-    );
+  /* ===================== RENDER ===================== */
 
-    rsiSeries.setData(
-      data
-        .filter((d) => d.rsi !== null && d.rsi !== undefined)
-        .map((d) => ({
-          time: Math.floor(d.time / 1000) as UTCTimestamp,
-          value: d.rsi!,
-        }))
-    );
+  return (
+    <div
+      ref={chartRef}
+      style={{ width: "100%", height: "420px" }}
+    />
+  );
+};
 
-    chart.timeScale().fitContent();
-
-    return () => {
-      chart.remove();
-    };
-  }, [data]);
-
-  return <div ref={ref} className="w-full" />;
-}
+export default CandlestickChart;

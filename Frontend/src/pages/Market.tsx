@@ -41,10 +41,12 @@ export default function Market() {
   useEffect(() => {
     if (!isAuthenticated || !debouncedSymbol) {
       wsRef.current?.close();
+      wsRef.current = null;
       setWsConnected(false);
       return;
     }
 
+    // 🔒 prevent duplicate sockets
     wsRef.current?.close();
 
     const ws = new WebSocket(
@@ -53,9 +55,7 @@ export default function Market() {
 
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      setWsConnected(true);
-    };
+    ws.onopen = () => setWsConnected(true);
 
     ws.onmessage = (event) => {
       try {
@@ -69,7 +69,6 @@ export default function Market() {
     };
 
     ws.onerror = () => {
-      // non-fatal: REST candles still work
       setWsConnected(false);
       console.warn("WebSocket error");
     };
@@ -80,11 +79,12 @@ export default function Market() {
 
     return () => {
       ws.close();
+      wsRef.current = null;
     };
   }, [debouncedSymbol, isAuthenticated]);
 
   /* ===============================
-     CANDLESTICKS (REST) — FIXED
+     CANDLESTICKS (REST)
      =============================== */
   const {
     data: candles,
@@ -93,7 +93,7 @@ export default function Market() {
   } = useQuery({
     queryKey: ["candles", debouncedSymbol, timeframe],
     queryFn: () => getCandles(debouncedSymbol, timeframe),
-    enabled: isAuthenticated && !!debouncedSymbol,
+    enabled: isAuthenticated && debouncedSymbol.length > 1,
     staleTime: 60 * 1000,
     retry: false,
   });
@@ -178,13 +178,13 @@ export default function Market() {
                 {debouncedSymbol}
                 {livePrice && livePrice > 0 ? (
                   <span className="ml-2 text-primary">
-                  ₹{livePrice.toFixed(2)}
+                    ₹{livePrice.toFixed(2)}
                   </span>
-                ) : (
+                ) : candles?.length ? (
                   <span className="ml-2 text-muted-foreground text-sm">
                     Market Closed
                   </span>
-                )}
+                ) : null}
               </h2>
             </div>
 

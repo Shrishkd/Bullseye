@@ -7,7 +7,6 @@ from app.core.config import settings
 from app.api.v1 import auth, market, chat, health, ws_market, news
 from app.db.session import engine
 from app.models import Base
-from app.api.v1.upstox import router as upstox_router
 
 # -----------------------------
 # Create FastAPI app
@@ -49,7 +48,6 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(market.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(ws_market.router)
-app.include_router(upstox_router, prefix="/api")
 app.include_router(news.router, prefix="/api")
 
 

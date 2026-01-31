@@ -1,62 +1,24 @@
 # app/services/symbol_resolver.py
 
-import httpx
-from functools import lru_cache
+# Temporary hard-mapped resolver for Indian equities
+# (We will later replace this with DB / Upstox instrument master)
 
-UPSTOX_INSTRUMENTS_URL = "https://api.upstox.com/v2/instruments"
+SYMBOL_MAP = {
+    "RELIANCE": "NSE_EQ|INE002A01018",
+    "TCS": "NSE_EQ|INE467B01029",
+    "INFY": "NSE_EQ|INE009A01021",
+    "HDFCBANK": "NSE_EQ|INE040A01034",
+    "ICICIBANK": "NSE_EQ|INE090A01021",
+}
 
 
 class SymbolResolver:
-    """
-    Resolves human-readable symbols (RELIANCE, TCS)
-    to Upstox instrument keys (NSE_EQ|INE...)
-    """
+    async def resolve(self, symbol: str) -> str | None:
+        if not symbol:
+            return None
 
-    def __init__(self):
-        self._symbol_map = {}
-
-    async def _load_instruments(self):
-        """
-        Load instrument master once and cache it.
-        """
-        if self._symbol_map:
-            return
-
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(UPSTOX_INSTRUMENTS_URL)
-
-        if r.status_code != 200:
-            return
-
-        lines = r.text.splitlines()
-
-        # CSV format (no auth needed)
-        # instrument_key,exchange,segment,name,isin,...
-        for line in lines[1:]:
-            parts = line.split(",")
-            if len(parts) < 6:
-                continue
-
-            instrument_key = parts[0]
-            exchange = parts[1]
-            name = parts[3]
-            isin = parts[4]
-
-            if exchange == "NSE" and instrument_key.startswith("NSE_EQ"):
-                self._symbol_map[name.upper()] = instrument_key
-                if isin:
-                    self._symbol_map[isin.upper()] = instrument_key
-
-    async def resolve(self, symbol: str) -> str:
-        """
-        Returns instrument_key if found, else original symbol.
-        """
         symbol = symbol.upper().strip()
-
-        await self._load_instruments()
-
-        return self._symbol_map.get(symbol, symbol)
+        return SYMBOL_MAP.get(symbol)
 
 
-# Singleton instance
 resolver = SymbolResolver()
