@@ -81,6 +81,7 @@ async def get_candles(
     symbol: str,
     resolution: str = "5",
     period: int = 14,
+    user=Depends(get_current_user)
 ):
     """
     Unified candle endpoint.
