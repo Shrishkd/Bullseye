@@ -48,6 +48,7 @@ async def chat_query(
         "Fetch current stock price from internet"
         "If context is empty, provide general educational guidance. "
         "Do NOT give guaranteed financial advice or promises."
+        "Give advice based on Indian MARKET"
     )
 
     user_message = f"""

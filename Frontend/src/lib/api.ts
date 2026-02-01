@@ -142,6 +142,17 @@ export async function getCandles(
   );
 }
 
+export type QuoteResponse = {
+  symbol: string;
+  price: number | null;
+  currency: string;
+  market_open: boolean;
+};
+
+export async function getQuote(symbol: string): Promise<QuoteResponse> {
+  return request(`/market/quote/${encodeURIComponent(symbol)}`);
+}
+
 export async function explainIndicators(payload: {
   symbol: string;
   price: number;
@@ -199,6 +210,7 @@ export default {
   getAsset,
   getPrices,
   getCandles,
+  getQuote,
   chatQuery,
   ingestPrice,
 };

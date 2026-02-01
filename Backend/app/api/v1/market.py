@@ -9,6 +9,7 @@ from app.api.deps import get_db, get_current_user
 
 from app.services.indicators import sma, ema, rsi
 from app.services.market_providers.router import get_provider
+from app.services.market_providers.upstox import is_market_open
 
 router = APIRouter(prefix="/market", tags=["market"])
 
@@ -71,6 +72,45 @@ async def get_recent_prices(
 
     prices = await prices_crud.get_recent_prices(db, asset.id, limit)
     return prices[::-1]  # oldest → newest
+
+
+# ===============================
+# QUOTE (LTP, INR)
+# ===============================
+@router.get("/quote/{symbol}")
+async def get_quote(
+    symbol: str,
+    user=Depends(get_current_user),
+):
+    """
+    Latest LTP for the given NSE symbol.
+    Resolves symbol via existing logic, fetches from Upstox.
+    """
+    try:
+        provider, resolved_symbol = await get_provider(symbol)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid or unsupported symbol: {symbol}",
+        )
+
+    if not resolved_symbol or "|" not in resolved_symbol:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid or unsupported symbol: {symbol}",
+        )
+
+    quote = await provider.fetch_quote(resolved_symbol)
+    price = quote.get("price") if quote else None
+    if price is not None:
+        price = float(price)
+
+    return {
+        "symbol": symbol.upper(),
+        "price": price,
+        "currency": "INR",
+        "market_open": is_market_open(),
+    }
 
 
 # ===============================

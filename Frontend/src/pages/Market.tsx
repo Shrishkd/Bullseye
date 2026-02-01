@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import CandlestickChart from "@/components/CandlestickChart";
-import { getCandles, explainIndicators } from "@/lib/api";
+import { getCandles, getQuote, explainIndicators } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -84,6 +84,17 @@ export default function Market() {
   }, [debouncedSymbol, isAuthenticated]);
 
   /* ===============================
+     QUOTE (REST) – initial/fallback price
+     =============================== */
+  const { data: quote } = useQuery({
+    queryKey: ["quote", debouncedSymbol],
+    queryFn: () => getQuote(debouncedSymbol),
+    enabled: isAuthenticated && debouncedSymbol.length > 1,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  /* ===============================
      CANDLESTICKS (REST)
      =============================== */
   const {
@@ -109,6 +120,14 @@ export default function Market() {
 
   const latestCandle = candles?.[candles.length - 1];
 
+  /* Prefer WebSocket live price; fallback to REST quote or latest candle close */
+  const displayPrice: number | null =
+    livePrice != null && livePrice > 0
+      ? livePrice
+      : quote?.price != null && quote.price > 0
+        ? quote.price
+        : latestCandle?.close ?? null;
+
   /* ===============================
      AI Explain Indicators
      =============================== */
@@ -121,7 +140,7 @@ export default function Market() {
     try {
       const res = await explainIndicators({
         symbol: debouncedSymbol,
-        price: livePrice ?? latestCandle.close,
+        price: displayPrice ?? latestCandle.close,
         rsi: latestCandle.rsi,
         sma: latestCandle.sma,
         ema: latestCandle.ema,
@@ -176,11 +195,11 @@ export default function Market() {
               <TrendingUp className="h-6 w-6 text-primary" />
               <h2 className="text-2xl font-semibold">
                 {debouncedSymbol}
-                {livePrice && livePrice > 0 ? (
+                {displayPrice != null && displayPrice > 0 ? (
                   <span className="ml-2 text-primary">
-                    ₹{livePrice.toFixed(2)}
+                    ₹{displayPrice.toFixed(2)}
                   </span>
-                ) : candles?.length ? (
+                ) : quote?.market_open === false || candles?.length ? (
                   <span className="ml-2 text-muted-foreground text-sm">
                     Market Closed
                   </span>
