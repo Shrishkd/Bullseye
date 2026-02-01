@@ -5,7 +5,7 @@ SQLAlchemy[asyncio]==2.0.32
 asyncpg==0.29.0
 aiosqlite==0.20.0
 
-pydantic==2.8.2
+pydantic==2.9.2
 pydantic-settings==2.3.4
 python-dotenv==1.0.1
 
@@ -15,10 +15,10 @@ passlib[bcrypt]==1.7.4
 redis==5.0.4
 celery==5.4.0
 
-httpx==0.27.0
+httpx==0.28.1
 requests==2.32.3
 pytz==2024.1
-websockets==12.0
+websockets==13.1
 
 numpy==1.26.4
 pandas==2.2.2
@@ -27,3 +27,4 @@ transformers==4.42.3
 sentence-transformers==2.7.0
 
 typing-extensions==4.12.2
+google-genai==1.55.0
